@@ -61,8 +61,21 @@ typedef void (^MQTTDisconnectionHandler)(NSUInteger code);
 @property (nonatomic, copy) MQTTMessageHandler messageHandler;
 @property (nonatomic, copy) MQTTDisconnectionHandler disconnectionHandler;
 
+/**
+ **must be set before connect
+ path to CA file.
+ */
 @property (nonatomic, copy) NSString *cafile;
+/**
+ **must be set before connect
+ SSL_VERIFY_NONE (0)
+ SSL_VERIFY_PEER (1)
+ */
 @property (nonatomic, assign) int certReqs;
+/**
+ **must be set before connect
+ if insecure will not verify host
+ */
 @property (nonatomic, assign) BOOL tlsInsecure;
 
 + (void) initialize;
