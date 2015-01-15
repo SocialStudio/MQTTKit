@@ -245,6 +245,14 @@ static void on_unsubscribe(struct mosquitto *mosq, void *obj, int message_id)
     mosquitto_username_pw_set(mosq, cstrUsername, cstrPassword);
     mosquitto_reconnect_delay_set(mosq, self.reconnectDelay, self.reconnectDelayMax, self.reconnectExponentialBackoff);
 
+    // TLS options
+    if (self.cafile.length > 0) {
+        const char *cstrCafile = [self.cafile cStringUsingEncoding:NSASCIIStringEncoding];
+        mosquitto_tls_set(mosq, cstrCafile, NULL, NULL, NULL, NULL);
+        mosquitto_tls_opts_set(mosq, self.certReqs, NULL, NULL); // ssl verify none
+        mosquitto_tls_insecure_set(mosq, self.tlsInsecure);
+    }
+
     mosquitto_connect(mosq, cstrHost, self.port, self.keepAlive);
     
     dispatch_async(self.queue, ^{

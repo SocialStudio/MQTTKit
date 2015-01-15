@@ -61,6 +61,10 @@ typedef void (^MQTTDisconnectionHandler)(NSUInteger code);
 @property (nonatomic, copy) MQTTMessageHandler messageHandler;
 @property (nonatomic, copy) MQTTDisconnectionHandler disconnectionHandler;
 
+@property (nonatomic, copy) NSString *cafile;
+@property (nonatomic, assign) int certReqs;
+@property (nonatomic, assign) BOOL tlsInsecure;
+
 + (void) initialize;
 + (NSString*) version;
 
