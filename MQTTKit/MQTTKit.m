@@ -69,6 +69,8 @@
 
 // dispatch queue to run the mosquitto_loop_forever.
 @property (nonatomic, strong) dispatch_queue_t queue;
+// is it possible dealloc is getting called before mosquitto_loop_forever completely exits?
+@property (nonatomic, strong) MQTTClient *retainSelfUntilLoopForeverExits;
 
 @end
 
@@ -256,9 +258,11 @@ static void on_unsubscribe(struct mosquitto *mosq, void *obj, int message_id)
     mosquitto_connect(mosq, cstrHost, self.port, self.keepAlive);
     
     dispatch_async(self.queue, ^{
+        self.retainSelfUntilLoopForeverExits = self;
         LogDebug(@"start mosquitto loop on %@", self.queue);
         mosquitto_loop_forever(mosq, -1, 1);
         LogDebug(@"end mosquitto loop on %@", self.queue);
+        self.retainSelfUntilLoopForeverExits = nil;
     });
 }
 
