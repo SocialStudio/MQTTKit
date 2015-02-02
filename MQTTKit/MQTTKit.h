@@ -81,8 +81,9 @@ typedef void (^MQTTDisconnectionHandler)(NSUInteger code);
 + (void) initialize;
 + (NSString*) version;
 
-- (MQTTClient*) initWithClientId: (NSString *)clientId;
+- (MQTTClient*) initWithClientId: (NSString*) clientId queueName: (NSString *)queueName;
 - (MQTTClient*) initWithClientId: (NSString *)clientId
+                       queueName: (NSString *)queueName
                     cleanSession: (BOOL )cleanSession;
 
 - (void) setMaxInflightMessages:(NSUInteger)maxInflightMessages;

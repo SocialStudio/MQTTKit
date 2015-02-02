@@ -176,12 +176,13 @@ static void on_unsubscribe(struct mosquitto *mosq, void *obj, int message_id)
     return [NSString stringWithFormat:@"%d.%d.%d", major, minor, revision];
 }
 
-- (MQTTClient*) initWithClientId: (NSString*) clientId
+- (MQTTClient*) initWithClientId: (NSString*) clientId queueName: (NSString *)queueName
 {
-    return [self initWithClientId:clientId cleanSession:YES];
+    return [self initWithClientId:clientId queueName:queueName cleanSession:YES];
 }
 
 - (MQTTClient*) initWithClientId: (NSString *)clientId
+                       queueName: (NSString *)queueName
                     cleanSession: (BOOL )cleanSession
 {
     if ((self = [super init])) {
@@ -197,7 +198,7 @@ static void on_unsubscribe(struct mosquitto *mosq, void *obj, int message_id)
         self.publishHandlers = [[NSMutableDictionary alloc] init];
         self.cleanSession = cleanSession;
 
-        const char* cstrClientId = [self.clientID cStringUsingEncoding:NSUTF8StringEncoding];
+        const char* cstrClientId = queueName.length > 0 ? [queueName cStringUsingEncoding:NSUTF8StringEncoding] : NULL;
 
         mosq = mosquitto_new(cstrClientId, self.cleanSession, (__bridge void *)(self));
         mosquitto_connect_callback_set(mosq, on_connect);
