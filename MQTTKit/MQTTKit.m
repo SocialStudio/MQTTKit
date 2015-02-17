@@ -224,6 +224,9 @@ static void on_unsubscribe(struct mosquitto *mosq, void *obj, int message_id)
 }
 
 - (void) dealloc {
+    if (self.queue) {
+        self.queue = nil;
+    }
     if (mosq) {
         mosquitto_destroy(mosq);
         mosq = NULL;
