@@ -1,17 +1,30 @@
 /*
-Copyright (c) 2009-2014 Roger Light <roger@atchoo.org>
+Copyright (c) 2009-2013 Roger Light <roger@atchoo.org>
+All rights reserved.
 
-All rights reserved. This program and the accompanying materials
-are made available under the terms of the Eclipse Public License v1.0
-and Eclipse Distribution License v1.0 which accompany this distribution.
- 
-The Eclipse Public License is available at
-   http://www.eclipse.org/legal/epl-v10.html
-and the Eclipse Distribution License is available at
-  http://www.eclipse.org/org/documents/edl-v10.php.
- 
-Contributors:
-   Roger Light - initial implementation and documentation.
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice,
+   this list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+3. Neither the name of mosquitto nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <assert.h>
@@ -22,20 +35,16 @@ Contributors:
 #endif
 
 
-#include <mosquitto.h>
-#include <memory_mosq.h>
-#include <net_mosq.h>
-#include <send_mosq.h>
-#include <time_mosq.h>
-#include <tls_mosq.h>
-#include <util_mosq.h>
+#include "mosquitto.h"
+#include "memory_mosq.h"
+#include "net_mosq.h"
+#include "send_mosq.h"
+#include "time_mosq.h"
+#include "tls_mosq.h"
+#include "util_mosq.h"
 
 #ifdef WITH_BROKER
-#include <mosquitto_broker.h>
-#endif
-
-#ifdef WITH_WEBSOCKETS
-#include <libwebsockets.h>
+#include "mosquitto_broker.h"
 #endif
 
 int _mosquitto_packet_alloc(struct _mosquitto_packet *packet)
@@ -61,11 +70,7 @@ int _mosquitto_packet_alloc(struct _mosquitto_packet *packet)
 	}while(remaining_length > 0 && packet->remaining_count < 5);
 	if(packet->remaining_count == 5) return MOSQ_ERR_PAYLOAD_SIZE;
 	packet->packet_length = packet->remaining_length + 1 + packet->remaining_count;
-#ifdef WITH_WEBSOCKETS
-	packet->payload = _mosquitto_malloc(sizeof(uint8_t)*packet->packet_length + LWS_SEND_BUFFER_PRE_PADDING + LWS_SEND_BUFFER_POST_PADDING);
-#else
 	packet->payload = _mosquitto_malloc(sizeof(uint8_t)*packet->packet_length);
-#endif
 	if(!packet->payload) return MOSQ_ERR_NOMEM;
 
 	packet->payload[0] = packet->command;
@@ -77,11 +82,7 @@ int _mosquitto_packet_alloc(struct _mosquitto_packet *packet)
 	return MOSQ_ERR_SUCCESS;
 }
 
-#ifdef WITH_BROKER
-void _mosquitto_check_keepalive(struct mosquitto_db *db, struct mosquitto *mosq)
-#else
 void _mosquitto_check_keepalive(struct mosquitto *mosq)
-#endif
 {
 	time_t last_msg_out;
 	time_t last_msg_in;
@@ -98,7 +99,7 @@ void _mosquitto_check_keepalive(struct mosquitto *mosq)
 				&& now - mosq->last_msg_out >= mosq->bridge->idle_timeout){
 
 		_mosquitto_log_printf(NULL, MOSQ_LOG_NOTICE, "Bridge connection %s has exceeded idle timeout, disconnecting.", mosq->id);
-		_mosquitto_socket_close(db, mosq);
+		_mosquitto_socket_close(mosq);
 		return;
 	}
 #endif
@@ -123,9 +124,9 @@ void _mosquitto_check_keepalive(struct mosquitto *mosq)
 				assert(mosq->listener->client_count >= 0);
 			}
 			mosq->listener = NULL;
-			_mosquitto_socket_close(db, mosq);
-#else
+#endif
 			_mosquitto_socket_close(mosq);
+#ifndef WITH_BROKER
 			pthread_mutex_lock(&mosq->state_mutex);
 			if(mosq->state == mosq_cs_disconnecting){
 				rc = MOSQ_ERR_SUCCESS;
@@ -155,12 +156,11 @@ uint16_t _mosquitto_mid_generate(struct mosquitto *mosq)
 	return mosq->last_mid;
 }
 
-/* Check that a topic used for publishing is valid.
- * Search for + or # in a topic. Return MOSQ_ERR_INVAL if found.
+/* Search for + or # in a topic. Return MOSQ_ERR_INVAL if found.
  * Also returns MOSQ_ERR_INVAL if the topic string is too long.
  * Returns MOSQ_ERR_SUCCESS if everything is fine.
  */
-int mosquitto_pub_topic_check(const char *str)
+int _mosquitto_topic_wildcard_len_check(const char *str)
 {
 	int len = 0;
 	while(str && str[0]){
@@ -175,14 +175,12 @@ int mosquitto_pub_topic_check(const char *str)
 	return MOSQ_ERR_SUCCESS;
 }
 
-/* Check that a topic used for subscriptions is valid.
- * Search for + or # in a topic, check they aren't in invalid positions such as
- * foo/#/bar, foo/+bar or foo/bar#.
+/* Search for + or # in a topic, check they aren't in invalid positions such as foo/#/bar, foo/+bar or foo/bar#.
  * Return MOSQ_ERR_INVAL if invalid position found.
  * Also returns MOSQ_ERR_INVAL if the topic string is too long.
  * Returns MOSQ_ERR_SUCCESS if everything is fine.
  */
-int mosquitto_sub_topic_check(const char *str)
+int _mosquitto_topic_wildcard_pos_check(const char *str)
 {
 	char c = '\0';
 	int len = 0;
